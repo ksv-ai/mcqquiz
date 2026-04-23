@@ -835,13 +835,30 @@ Correct: A</pre>
       <details class="excel-format-hint">
         <summary class="hint-summary" data-i18n="view_excel_format">View Excel format</summary>
         <div class="hint-body">
-          <p>The Excel file should have questions and options organized in columns. No headers required.</p>
-          <pre>Col A: Question text
-Col B: Option 1
-Col C: Option 2
-Col D: Option 3
-Col E: Option 4
-Col F: Correct Answer (Index 0-3 or A-D or Option Text)</pre>
+          <p>Please organize your Excel file as shown below. No header row is required.</p>
+          <style>
+            .format-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+            .format-table th, .format-table td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+            .format-table th { background: var(--bg); color: var(--text-secondary); }
+          </style>
+          <table class="format-table">
+            <thead>
+              <tr>
+                <th>Column</th>
+                <th>Content</th>
+                <th>Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>A</td><td>Question</td><td>चाापको SI एकाइ के हो?</td></tr>
+              <tr><td>B</td><td>Option A</td><td>न्युटन (Newton)</td></tr>
+              <tr><td>C</td><td>Option B</td><td>पास्कल (Pascal)</td></tr>
+              <tr><td>D</td><td>Option C</td><td>पास्कल (Pa) = N/m²</td></tr>
+              <tr><td>E</td><td>Option D</td><td>वाट (Watt)</td></tr>
+              <tr><td>F</td><td>Correct Ans</td><td>C</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:10px; font-size:12px;">* For the correct answer, you can use the letter (A, B, C, D), the index (0, 1, 2, 3), or the exact option text.</p>
         </div>
       </details>
       <div class="status-msg" id="excelStatus"></div>
@@ -1018,8 +1035,8 @@ const i18nData = {
     export_filename_questions: "MCQ_Questions.xlsx",
     export_filename_results: "MCQ_Results.xlsx",
     export_filename_pdf: "MCQ_Results.pdf",
-    share_link: "Generate Shareable Quiz Link",
-    link_copied: "Shareable Link Created & Copied!",
+    share_link: "Share Quiz Link",
+    link_copied: "Share Quiz Link Created!",
     loading_shared: "Loading shared questions...",
     share_error: "Data too large to share via link. Try fewer questions.",
     copy_link: "Copy Link"
@@ -1073,8 +1090,8 @@ const i18nData = {
     export_filename_questions: "MCQ_प्रश्नहरू.xlsx",
     export_filename_results: "MCQ_नतिजा.xlsx",
     export_filename_pdf: "MCQ_नतिजा.pdf",
-    share_link: "सेयर गर्न मिल्ने क्विज लिंक बनाउनुहोस्",
-    link_copied: "क्विज लिंक तयार भयो र कपी गरियो!",
+    share_link: "क्विज लिंक सेयर गर्नुहोस्",
+    link_copied: "क्विज लिंक तयार भयो!",
     loading_shared: "सेयर गरिएका प्रश्नहरू लोड हुँदैछ...",
     share_error: "डाटा धेरै ठूलो भयो। थोरै प्रश्नहरू प्रयास गर्नुहोस्।",
     copy_link: "लिंक कपी गर्नुहोस्"
@@ -1176,6 +1193,10 @@ if (excelFile) {
 }
 
 function processExcelFile(file) {
+  if (typeof XLSX === 'undefined') {
+    showStatus('excelStatus', 'err', 'Excel library still loading... please wait a second and try again.');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -1210,37 +1231,44 @@ function cleanQuestion(q) {
 
 
 function smartParseRow(cells) {
-  // Expected: Question, OptA, OptB, OptC, OptD, Correct
-  if (cells.length < 3) return null;
-  
-  const question = cleanQuestion(String(cells[0]));
+  const question = cleanQuestion(String(cells[0] || ''));
+  if (!question) return null;
+
   let options = [];
   let correctIdx = -1;
   
-  // Collect options - stop if we hit an empty cell or the end
-  let i = 1;
-  while (i < cells.length - 1 && i <= 5) {
-    if (cells[i]) options.push(String(cells[i]).trim());
-    i++;
+  // Collect options from columns B, C, D, E (indices 1 to 4)
+  for (let i = 1; i <= 4; i++) {
+    const val = String(cells[i] || '').trim();
+    if (val) options.push(val);
   }
-  
-  // Last cell is correct answer
-  const correctVal = String(cells[cells.length - 1] || cells[options.length + 1] || '').trim();
   
   if (options.length < 2) return null;
 
-  // Try to determine correct index
+  // The correct answer is usually in the next column after the last option or the very last column
+  // We'll look at index 5 (Column F) or the last non-empty cell
+  let correctVal = '';
+  for (let i = cells.length - 1; i >= options.length; i--) {
+    const val = String(cells[i] || '').trim();
+    if (val) {
+      correctVal = val;
+      break;
+    }
+  }
+  
+  // Try to determine correct index (A-D, 0-3, or Text match)
   const labelIdx = ['A','B','C','D','E','F'].indexOf(correctVal.toUpperCase());
   if (labelIdx !== -1 && labelIdx < options.length) {
     correctIdx = labelIdx;
   } else if (!isNaN(correctVal) && correctVal !== '' && parseInt(correctVal) < options.length) {
     correctIdx = parseInt(correctVal);
   } else {
-    // Exact text match
-    correctIdx = options.findIndex(opt => opt.toLowerCase() === correctVal.toLowerCase());
+    // Exact text match check
+    const match = options.findIndex(opt => opt.toLowerCase() === correctVal.toLowerCase());
+    if (match !== -1) correctIdx = match;
   }
 
-  if (correctIdx === -1) correctIdx = 0; // default
+  if (correctIdx === -1) correctIdx = 0; // Default to first option if unknown
 
   return { question, options, correct: correctIdx };
 }
