@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MCQ Quiz — Nepal SEE</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%231a56a0%22/><text y=%221.5em%22 font-size=%2245%22 font-weight=%22800%22 font-family=%22system-ui,sans-serif%22 fill=%22white%22 x=%2250%%22 text-anchor=%22middle%22>MCQ</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1024,8 +1025,7 @@ const i18nData = {
     link_copied: "Link copied to clipboard!",
     loading_shared: "Loading shared questions...",
     share_error: "Data too large to share via link. Try fewer questions.",
-    copy_link: "Copy Link",
-    shortening: "Shortening link..."
+    copy_link: "Copy Link"
   },
   ne: {
 
@@ -1080,8 +1080,7 @@ const i18nData = {
     link_copied: "लिंक क्लिपबोर्डमा कपी गरियो!",
     loading_shared: "सेयर गरिएका प्रश्नहरू लोड हुँदैछ...",
     share_error: "डाटा धेरै ठूलो भयो। थोरै प्रश्नहरू प्रयास गर्नुहोस्।",
-    copy_link: "लिंक कपी गर्नुहोस्",
-    shortening: "लिंक छोटो बनाउँदै..."
+    copy_link: "लिंक कपी गर्नुहोस्"
   }
 };
 
@@ -1754,8 +1753,7 @@ async function generateShareLink() {
     const compressed = await compressData(questionBank);
     let finalUrl = window.location.origin + window.location.pathname + '#q=' + compressed;
     
-    // Attempt to shorten using is.gd (Free, no-key API)
-    btn.textContent = '⏳ ' + lang.shortening;
+    // Attempt to shorten using is.gd (Silent)
     try {
       const shortRes = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(finalUrl)}`);
       if (shortRes.ok) {
@@ -1791,7 +1789,10 @@ async function checkUrlHash() {
       const questions = await decompressData(hash.substring(3));
       if (Array.isArray(questions) && questions.length > 0) {
         loadQuestions(questions, 'Shared Link');
-        showStatus('textStatus', 'ok', (currentLang === 'ne' ? 'लिंकबाट लोड भयो' : 'Loaded from shared link'));
+        const msg = currentLang === 'ne' 
+          ? `लिंकबाट ${questions.length} प्रश्नहरू लोड भयो` 
+          : `Loaded ${questions.length} questions from shared link`;
+        showStatus('textStatus', 'ok', msg);
       }
     } catch (err) {
       console.error("Shared link error:", err);
