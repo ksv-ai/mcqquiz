@@ -752,6 +752,65 @@ body.dark-mode .review-ans.hint { color: #64b5f6; }
   font-weight: 500;
 }
 .heart { color: var(--red); margin: 0 4px; }
+.share-link-wrap {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: none;
+  animation: slideIn 0.3s ease;
+  box-shadow: var(--shadow);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+.share-link-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.share-link-text {
+  flex: 1;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13.5px;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.copy-link-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.copy-link-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.share-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
 </style>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 
@@ -844,18 +903,31 @@ Correct: A</pre>
           <table class="format-table">
             <thead>
               <tr>
-                <th>Column</th>
-                <th>Content</th>
-                <th>Example</th>
+                <th>A (Question)</th>
+                <th>B (Option A)</th>
+                <th>C (Option B)</th>
+                <th>D (Option C)</th>
+                <th>E (Option D)</th>
+                <th>F (Correct)</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td>A</td><td>Question</td><td>चाापको SI एकाइ के हो?</td></tr>
-              <tr><td>B</td><td>Option A</td><td>न्युटन (Newton)</td></tr>
-              <tr><td>C</td><td>Option B</td><td>पास्कल (Pascal)</td></tr>
-              <tr><td>D</td><td>Option C</td><td>पास्कल (Pa) = N/m²</td></tr>
-              <tr><td>E</td><td>Option D</td><td>वाट (Watt)</td></tr>
-              <tr><td>F</td><td>Correct Ans</td><td>C</td></tr>
+              <tr>
+                <td>चापको SI एकाइ के हो?</td>
+                <td>न्युटन (Newton)</td>
+                <td>पास्कल (Pascal)</td>
+                <td>पास्कल (Pa) = N/m²</td>
+                <td>वाट (Watt)</td>
+                <td>C</td>
+              </tr>
+              <tr>
+                <td>घनत्वको SI एकाइ के हो?</td>
+                <td>g/cm³</td>
+                <td>kg/m²</td>
+                <td>kg/m³</td>
+                <td>N/m²</td>
+                <td>C</td>
+              </tr>
             </tbody>
           </table>
           <p style="margin-top:10px; font-size:12px;">* For the correct answer, you can use the letter (A, B, C, D), the index (0, 1, 2, 3), or the exact option text.</p>
@@ -889,7 +961,18 @@ Correct: A</pre>
         </select>
       </label>
       <span class="info-chip" id="totalChip" data-i18n="no_questions">0 questions loaded</span>
-      <button class="btn btn-primary btn-sm" id="shareBtn" onclick="generateShareLink()" style="display:none; box-shadow: 0 4px 12px rgba(26,86,160,0.3);" data-i18n="share_link">Share Quiz Link</button>
+      <div class="share-area">
+        <button class="btn btn-primary btn-sm" id="shareBtn" onclick="generateShareLink()" style="display:none; box-shadow: 0 4px 12px rgba(26,86,160,0.3);" data-i18n="share_link">Share Quiz Link</button>
+        <div class="share-link-wrap" id="shareLinkWrap">
+          <div class="share-link-inner">
+            <div class="share-link-text" id="shareLinkDisplay"></div>
+            <button class="copy-link-btn" onclick="copyShareLinkOnly()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span id="copyBtnText">Copy</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
 
@@ -1362,8 +1445,6 @@ function loadQuestions(data, source) {
   document.getElementById('startDesc').textContent =
     `${data.length} ` + (currentLang === 'ne' ? 'प्रश्नहरू लोड गरियो। राउन्ड चयन गर्नुहोस् र सुरु गर्नुहोस्।' : 'questions loaded. Select round size and press Start.');
 
-  document.getElementById('exportAllBtn').style.display = 'inline-flex';
-
   // Visual feedback for the text load button if applicable
   const loadBtn = document.getElementById('loadTextBtn');
   if (loadBtn && source === 'Text input') {
@@ -1790,6 +1871,12 @@ async function generateShareLink() {
 
     await navigator.clipboard.writeText(finalUrl);
     
+    // Show the link display box below the button
+    const wrap = document.getElementById('shareLinkWrap');
+    const display = document.getElementById('shareLinkDisplay');
+    display.textContent = finalUrl;
+    wrap.style.display = 'flex';
+    
     btn.textContent = '✓ ' + lang.link_copied;
     btn.classList.add('btn-success');
     setTimeout(() => {
@@ -1802,6 +1889,26 @@ async function generateShareLink() {
     alert(lang.share_error);
     btn.textContent = originalText;
   }
+}
+
+function copyShareLinkOnly() {
+  const link = document.getElementById('shareLinkDisplay').textContent;
+  if (!link) return;
+  navigator.clipboard.writeText(link);
+  
+  const btn = document.querySelector('.copy-link-btn');
+  const textEl = document.getElementById('copyBtnText');
+  const oldText = textEl.textContent;
+  
+  textEl.textContent = (currentLang === 'ne' ? 'कपी भयो' : 'Copied');
+  btn.style.borderColor = 'var(--green)';
+  btn.style.color = 'var(--green)';
+  
+  setTimeout(() => {
+    textEl.textContent = oldText;
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }, 2000);
 }
 
 async function checkUrlHash() {
