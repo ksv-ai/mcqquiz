@@ -872,8 +872,7 @@ Col F: Correct Answer (Index 0-3 or A-D or Option Text)</pre>
         </select>
       </label>
       <span class="info-chip" id="totalChip" data-i18n="no_questions">0 questions loaded</span>
-      <button class="btn btn-ghost btn-sm" id="exportAllBtn" onclick="exportQuestionsToExcel()" style="display:none;" data-i18n="export_all_excel">Export Questions (Excel)</button>
-      <button class="btn btn-outline btn-sm" id="shareBtn" onclick="generateShareLink()" style="display:none;" data-i18n="share_link">Share Quiz Link</button>
+      <button class="btn btn-primary btn-sm" id="shareBtn" onclick="generateShareLink()" style="display:none; box-shadow: 0 4px 12px rgba(26,86,160,0.3);" data-i18n="share_link">Share Quiz Link</button>
     </div>
 
 
@@ -946,8 +945,6 @@ Col F: Correct Answer (Index 0-3 or A-D or Option Text)</pre>
       <div class="action-btns">
         <button class="btn btn-primary" onclick="startQuiz()" data-i18n="new_round">New Round</button>
         <button class="btn btn-outline" onclick="showReview()" data-i18n="review_btn">Review Answers</button>
-        <button class="btn btn-ghost" onclick="exportResultsToExcel()" data-i18n="export_result_excel">Download Result (Excel)</button>
-        <button class="btn btn-ghost" onclick="exportResultsToPDF()" data-i18n="export_result_pdf">Download Result (PDF)</button>
         <button class="btn btn-ghost" onclick="backToStart()" data-i18n="import_more">Import More</button>
       </div>
     </div>
@@ -1021,8 +1018,8 @@ const i18nData = {
     export_filename_questions: "MCQ_Questions.xlsx",
     export_filename_results: "MCQ_Results.xlsx",
     export_filename_pdf: "MCQ_Results.pdf",
-    share_link: "Share Quiz Link",
-    link_copied: "Link copied to clipboard!",
+    share_link: "Generate Shareable Quiz Link",
+    link_copied: "Shareable Link Created & Copied!",
     loading_shared: "Loading shared questions...",
     share_error: "Data too large to share via link. Try fewer questions.",
     copy_link: "Copy Link"
@@ -1076,8 +1073,8 @@ const i18nData = {
     export_filename_questions: "MCQ_प्रश्नहरू.xlsx",
     export_filename_results: "MCQ_नतिजा.xlsx",
     export_filename_pdf: "MCQ_नतिजा.pdf",
-    share_link: "क्विज लिंक सेयर गर्नुहोस्",
-    link_copied: "लिंक क्लिपबोर्डमा कपी गरियो!",
+    share_link: "सेयर गर्न मिल्ने क्विज लिंक बनाउनुहोस्",
+    link_copied: "क्विज लिंक तयार भयो र कपी गरियो!",
     loading_shared: "सेयर गरिएका प्रश्नहरू लोड हुँदैछ...",
     share_error: "डाटा धेरै ठूलो भयो। थोरै प्रश्नहरू प्रयास गर्नुहोस्।",
     copy_link: "लिंक कपी गर्नुहोस्"
@@ -1333,7 +1330,6 @@ function loadQuestions(data, source) {
   document.getElementById('subjectTag').textContent = source + ' — ' + data.length + ' questions';
   document.getElementById('totalChip').textContent = data.length + (currentLang === 'ne' ? ' प्रश्नहरू लोड गरियो' : ' questions loaded');
   document.getElementById('startBtn').disabled = false;
-  document.getElementById('exportAllBtn').style.display = 'inline-flex';
   document.getElementById('shareBtn').style.display = 'inline-flex';
   document.getElementById('startDesc').textContent =
     `${data.length} ` + (currentLang === 'ne' ? 'प्रश्नहरू लोड गरियो। राउन्ड चयन गर्नुहोस् र सुरु गर्नुहोस्।' : 'questions loaded. Select round size and press Start.');
