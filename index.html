@@ -755,6 +755,8 @@ body.dark-mode .review-ans.hint { color: #64b5f6; }
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
   <script>
     window.MathJax = {
       tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
@@ -869,6 +871,8 @@ Col F: Correct Answer (Index 0-3 or A-D or Option Text)</pre>
         </select>
       </label>
       <span class="info-chip" id="totalChip" data-i18n="no_questions">0 questions loaded</span>
+      <button class="btn btn-ghost btn-sm" id="exportAllBtn" onclick="exportQuestionsToExcel()" style="display:none;" data-i18n="export_all_excel">Export Questions (Excel)</button>
+      <button class="btn btn-outline btn-sm" id="shareBtn" onclick="generateShareLink()" style="display:none;" data-i18n="share_link">Share Quiz Link</button>
     </div>
 
 
@@ -941,6 +945,8 @@ Col F: Correct Answer (Index 0-3 or A-D or Option Text)</pre>
       <div class="action-btns">
         <button class="btn btn-primary" onclick="startQuiz()" data-i18n="new_round">New Round</button>
         <button class="btn btn-outline" onclick="showReview()" data-i18n="review_btn">Review Answers</button>
+        <button class="btn btn-ghost" onclick="exportResultsToExcel()" data-i18n="export_result_excel">Download Result (Excel)</button>
+        <button class="btn btn-ghost" onclick="exportResultsToPDF()" data-i18n="export_result_pdf">Download Result (PDF)</button>
         <button class="btn btn-ghost" onclick="backToStart()" data-i18n="import_more">Import More</button>
       </div>
     </div>
@@ -1007,7 +1013,18 @@ const i18nData = {
     accuracy: "Accuracy: ",
     time_limit: "Time Limit (per Q):",
     none: "None",
-    time_taken: "Time taken: {s}s"
+    time_taken: "Time taken: {s}s",
+    export_all_excel: "Export Questions (Excel)",
+    export_result_pdf: "Download Result (PDF)",
+    export_result_excel: "Download Result (Excel)",
+    export_filename_questions: "MCQ_Questions.xlsx",
+    export_filename_results: "MCQ_Results.xlsx",
+    export_filename_pdf: "MCQ_Results.pdf",
+    share_link: "Share Quiz Link",
+    link_copied: "Link copied to clipboard!",
+    loading_shared: "Loading shared questions...",
+    share_error: "Data too large to share via link. Try fewer questions.",
+    copy_link: "Copy Link"
   },
   ne: {
 
@@ -1051,7 +1068,18 @@ const i18nData = {
     accuracy: "शुद्धता: ",
     time_limit: "समय सीमा (प्रति प्रश्न):",
     none: "छैन",
-    time_taken: "लागेको समय: {s}s"
+    time_taken: "लागेको समय: {s}s",
+    export_all_excel: "प्रश्नहरू निर्यात (एक्सेल)",
+    export_result_pdf: "नतिजा डाउनलोड (PDF)",
+    export_result_excel: "नतिजा डाउनलोड (एक्सेल)",
+    export_filename_questions: "MCQ_प्रश्नहरू.xlsx",
+    export_filename_results: "MCQ_नतिजा.xlsx",
+    export_filename_pdf: "MCQ_नतिजा.pdf",
+    share_link: "क्विज लिंक सेयर गर्नुहोस्",
+    link_copied: "लिंक क्लिपबोर्डमा कपी गरियो!",
+    loading_shared: "सेयर गरिएका प्रश्नहरू लोड हुँदैछ...",
+    share_error: "डाटा धेरै ठूलो भयो। थोरै प्रश्नहरू प्रयास गर्नुहोस्।",
+    copy_link: "लिंक कपी गर्नुहोस्"
   }
 };
 
@@ -1304,8 +1332,12 @@ function loadQuestions(data, source) {
   document.getElementById('subjectTag').textContent = source + ' — ' + data.length + ' questions';
   document.getElementById('totalChip').textContent = data.length + (currentLang === 'ne' ? ' प्रश्नहरू लोड गरियो' : ' questions loaded');
   document.getElementById('startBtn').disabled = false;
+  document.getElementById('exportAllBtn').style.display = 'inline-flex';
+  document.getElementById('shareBtn').style.display = 'inline-flex';
   document.getElementById('startDesc').textContent =
     `${data.length} ` + (currentLang === 'ne' ? 'प्रश्नहरू लोड गरियो। राउन्ड चयन गर्नुहोस् र सुरु गर्नुहोस्।' : 'questions loaded. Select round size and press Start.');
+
+  document.getElementById('exportAllBtn').style.display = 'inline-flex';
 
   // Visual feedback for the text load button if applicable
   const loadBtn = document.getElementById('loadTextBtn');
@@ -1577,6 +1609,171 @@ function backToStart() {
   document.getElementById('reviewSection').style.display = 'none';
 }
 
+// ── Export Logic ──────────────────────────────────────────────────────────────
+
+function exportQuestionsToExcel() {
+  if (questionBank.length === 0) return;
+  const lang = i18nData[currentLang];
+  const letters = ['A','B','C','D','E','F'];
+  
+  const data = questionBank.map(q => {
+    const row = {
+      'Question': q.question
+    };
+    q.options.forEach((opt, i) => {
+      row[`Option ${letters[i]}`] = opt;
+    });
+    row['Correct Answer'] = letters[q.correct];
+    return row;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Questions");
+  XLSX.writeFile(wb, lang.export_filename_questions);
+}
+
+function exportResultsToExcel() {
+  if (activeQuestions.length === 0) return;
+  const lang = i18nData[currentLang];
+  const letters = ['A','B','C','D','E','F'];
+
+  const data = activeQuestions.map((q, i) => {
+    const ua = userAnswers[i];
+    const isCorrect = ua && ua.selected === q.correct;
+    const status = ua.selected === -1 ? (currentLang === 'ne' ? 'समय सकियो' : 'Timed Out') : 
+                   (isCorrect ? (currentLang === 'ne' ? 'सही' : 'Correct') : (currentLang === 'ne' ? 'गलत' : 'Incorrect'));
+
+    const row = {
+      'Q.No': i + 1,
+      'Question': q.question,
+      'Option A': q.options[0] || '',
+      'Option B': q.options[1] || '',
+      'Option C': q.options[2] || '',
+      'Option D': q.options[3] || '',
+      'Correct Answer': letters[q.correct],
+      'Your Answer': ua.selected === -1 ? '-' : letters[ua.selected],
+      'Result': status,
+      'Time Taken (s)': ua.time
+    };
+    return row;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Quiz Results");
+  XLSX.writeFile(wb, lang.export_filename_results);
+}
+
+function exportResultsToPDF() {
+  if (activeQuestions.length === 0) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const lang = i18nData[currentLang];
+  const letters = ['A','B','C','D','E','F'];
+
+  // Add Title
+  doc.setFontSize(18);
+  doc.text(lang.quiz_complete, 14, 22);
+  doc.setFontSize(11);
+  doc.setTextColor(100);
+  doc.text(`${lang.score}: ${score}/${activeQuestions.length} (${Math.round(score/activeQuestions.length*100)}%)`, 14, 30);
+  
+  const tableData = activeQuestions.map((q, i) => {
+    const ua = userAnswers[i];
+    const isCorrect = ua && ua.selected === q.correct;
+    const status = ua.selected === -1 ? (currentLang === 'ne' ? 'Timed Out' : 'Timed Out') : 
+                   (isCorrect ? (currentLang === 'ne' ? 'Correct' : 'Correct') : (currentLang === 'ne' ? 'Incorrect' : 'Incorrect'));
+
+    return [
+      i + 1,
+      q.question,
+      letters[q.correct],
+      ua.selected === -1 ? '-' : letters[ua.selected],
+      status
+    ];
+  });
+
+  doc.autoTable({
+    startY: 38,
+    head: [['#', 'Question', 'Correct', 'Your Ans', 'Result']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: [26, 86, 160] },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 100 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 25 }
+    },
+    styles: { fontSize: 9, font: 'helvetica' }
+  });
+
+  doc.save(lang.export_filename_pdf);
+}
+
+// ── Sharing Logic (URL Hash) ──────────────────────────────────────────────────
+
+async function compressData(obj) {
+  const str = JSON.stringify(obj);
+  const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
+  const buffer = await new Response(stream).arrayBuffer();
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); // URL Safe Base64
+}
+
+async function decompressData(base64) {
+  const b64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(stream).text();
+}
+
+async function generateShareLink() {
+  if (questionBank.length === 0) return;
+  const btn = document.getElementById('shareBtn');
+  const originalText = btn.textContent;
+  const lang = i18nData[currentLang];
+
+  try {
+    const compressed = await compressData(questionBank);
+    const url = window.location.origin + window.location.pathname + '#q=' + compressed;
+    
+    await navigator.clipboard.writeText(url);
+    
+    btn.textContent = '✓ ' + lang.link_copied;
+    btn.classList.add('btn-success');
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.classList.remove('btn-success');
+      updateUI();
+    }, 2500);
+  } catch (err) {
+    console.error(err);
+    alert(lang.share_error);
+  }
+}
+
+async function checkUrlHash() {
+  const hash = window.location.hash;
+  if (hash.startsWith('#q=')) {
+    const lang = i18nData[currentLang];
+    showStatus('textStatus', 'ok', lang.loading_shared);
+    try {
+      const json = await decompressData(hash.substring(3));
+      const questions = JSON.parse(json);
+      if (Array.isArray(questions) && questions.length > 0) {
+        loadQuestions(questions, 'Shared Link');
+        showStatus('textStatus', 'ok', (currentLang === 'ne' ? 'लिंकबाट लोड भयो' : 'Loaded from shared link'));
+      }
+    } catch (err) {
+      console.error("Shared link error:", err);
+      showStatus('textStatus', 'err', "Failed to load shared questions.");
+    }
+  }
+}
+
 if (typeof XLSX === 'undefined') {
 
   const script = document.createElement('script');
@@ -1584,6 +1781,7 @@ if (typeof XLSX === 'undefined') {
   document.head.appendChild(script);
 }
 updateUI(); // Init labels
+checkUrlHash(); // Check for shared questions on load
 
 </script>
 </body>
